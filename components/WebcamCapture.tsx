@@ -8,6 +8,12 @@ interface WebcamCaptureProps {
   onDetection: (detection: Detection) => void;
 }
 
+interface CocoSsdPrediction {
+  class: string;
+  score: number;
+  bbox: [number, number, number, number];
+}
+
 export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -15,9 +21,10 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const detectionIntervalRef = useRef<NodeJS.Timeout>();
-  const cocoModelRef = useRef<any>(null);
+  const cocoModelRef = useRef<cocoSsd.ObjectDetection | null>(null);
   const frameCountRef = useRef(0);
 
+  // Start camera
   useEffect(() => {
     const startCamera = async () => {
       try {
@@ -38,13 +45,15 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
     startCamera();
 
     return () => {
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
+      const video = videoRef.current; // Fix warning
+      if (video?.srcObject) {
+        const stream = video.srcObject as MediaStream;
         stream.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
 
+  // Load COCO-SSD model
   useEffect(() => {
     const loadModel = async () => {
       try {
@@ -59,6 +68,7 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
     loadModel();
   }, []);
 
+  // Perform detection every 100ms
   useEffect(() => {
     if (!cameraActive || loading) return;
 
@@ -104,6 +114,7 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
     };
   }, [cameraActive, loading, onDetection]);
 
+  // Face detection (pixel-based)
   const detectFaces = async (canvas: HTMLCanvasElement): Promise<number> => {
     try {
       const ctx = canvas.getContext('2d');
@@ -138,24 +149,32 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
     }
   };
 
-  const detectObjects = async (canvas: HTMLCanvasElement): Promise<{ phoneDetected: boolean; suspiciousObjects: string[] }> => {
+  // Object detection (COCO-SSD updated)
+  const detectObjects = async (
+    canvas: HTMLCanvasElement
+  ): Promise<{ phoneDetected: boolean; suspiciousObjects: string[] }> => {
     try {
-      if (!cocoModelRef.current) return { phoneDetected: false, suspiciousObjects: [] };
+      if (!cocoModelRef.current) {
+        return { phoneDetected: false, suspiciousObjects: [] };
+      }
 
-      const predictions = await cocoModelRef.current.estimateObjects(canvas, 5);
+      const predictions = (await cocoModelRef.current.detect(canvas)) as CocoSsdPrediction[];
 
-      const phoneDetected = predictions.some((pred: any) => 
-        pred.class.toLowerCase().includes('cell phone') || 
+      const phoneDetected = predictions.some((pred) =>
+        pred.class.toLowerCase().includes('cell phone') ||
         pred.class.toLowerCase().includes('phone') ||
         pred.class.toLowerCase().includes('mobile')
       );
 
       const suspiciousObjects = predictions
-        .filter((pred: any) => {
+        .filter((pred) => {
           const cls = pred.class.toLowerCase();
-          return (cls.includes('book') || cls.includes('notebook') || cls.includes('laptop')) && pred.score > 0.5;
+          return (
+            (cls.includes('book') || cls.includes('notebook') || cls.includes('laptop')) &&
+            pred.score > 0.5
+          );
         })
-        .map((pred: any) => pred.class);
+        .map((pred) => pred.class);
 
       return { phoneDetected, suspiciousObjects: [...new Set(suspiciousObjects)] };
     } catch (err) {
@@ -164,6 +183,7 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
     }
   };
 
+  // Head pose estimation
   const estimateHeadPose = (canvas: HTMLCanvasElement) => {
     try {
       const ctx = canvas.getContext('2d');
@@ -174,17 +194,17 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
       const width = canvas.width;
       const height = canvas.height;
 
-      let leftBrightness = 0;
-      let rightBrightness = 0;
-      let topBrightness = 0;
-      let bottomBrightness = 0;
-
-      const quarterWidth = width / 4;
-      const quarterHeight = height / 4;
+      let leftBrightness = 0,
+        rightBrightness = 0,
+        topBrightness = 0,
+        bottomBrightness = 0;
       let leftCount = 0,
         rightCount = 0,
         topCount = 0,
         bottomCount = 0;
+
+      const quarterWidth = width / 4;
+      const quarterHeight = height / 4;
 
       for (let i = 0; i < data.length; i += 4) {
         const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
@@ -216,7 +236,7 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
 
       const yaw = ((avgRight - avgLeft) / 255) * 45;
       const pitch = ((avgBottom - avgTop) / 255) * 45;
-      const roll = (Math.sin(frameCountRef.current / 10) * 20);
+      const roll = Math.sin(frameCountRef.current / 10) * 20;
 
       return {
         pitch: Math.round(pitch * 10) / 10,
@@ -229,6 +249,7 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
     }
   };
 
+  // UI — Camera access error
   if (error) {
     return (
       <div className="glass-effect p-8 rounded-lg border border-red-500/40 h-96 flex items-center justify-center shadow-lg">
@@ -245,6 +266,7 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
     );
   }
 
+  // UI — Model loading
   if (loading) {
     return (
       <div className="glass-effect p-8 rounded-lg border border-indigo-500/40 h-96 flex items-center justify-center shadow-lg">
@@ -258,6 +280,7 @@ export default function WebcamCapture({ onDetection }: WebcamCaptureProps) {
     );
   }
 
+  // UI — Live feed display
   return (
     <div className="glass-effect p-6 rounded-lg border border-indigo-500/40 space-y-4 shadow-lg">
       <div className="relative bg-black rounded-lg overflow-hidden">

@@ -37,11 +37,17 @@ function MetricCard({ title, value, icon, status }: MetricCardProps) {
 }
 
 export default function PresentationMode() {
-  const [metrics, setMetrics] = useState({
+  const [metrics, setMetrics] = useState<{
+    facesDetected: number;
+    attention: number;
+    suspiciousActivity: number;
+    objects: string[];
+    sessionTime: number;
+  }>({
     facesDetected: 1,
     attention: 95,
     suspiciousActivity: 0,
-    objects: [],
+    objects: [] as string[],
     sessionTime: 0,
   });
 
@@ -70,7 +76,7 @@ export default function PresentationMode() {
           facesDetected: 1,
           attention: 95,
           suspiciousActivity: 0,
-          objects: [],
+          objects: [] as string[],
           sessionTime: 0,
         });
         break;
@@ -79,7 +85,7 @@ export default function PresentationMode() {
           facesDetected: 0,
           attention: 0,
           suspiciousActivity: 1,
-          objects: [],
+          objects: [] as string[],
           sessionTime: 0,
         });
         setAlerts(['⚠️ No face detected - Student not looking at screen']);
@@ -89,7 +95,7 @@ export default function PresentationMode() {
           facesDetected: 2,
           attention: 0,
           suspiciousActivity: 2,
-          objects: [],
+          objects: [] as string[],
           sessionTime: 0,
         });
         setAlerts(['🚨 Multiple faces detected!', '🚨 Potential cheating attempt']);
@@ -99,7 +105,7 @@ export default function PresentationMode() {
           facesDetected: 1,
           attention: 40,
           suspiciousActivity: 1,
-          objects: ['cell phone'],
+          objects: ['cell phone'] as string[],
           sessionTime: 0,
         });
         setAlerts(['🚨 Phone detected in exam', '⚠️ Excessive head movement']);
@@ -109,7 +115,7 @@ export default function PresentationMode() {
           facesDetected: 1,
           attention: 30,
           suspiciousActivity: 2,
-          objects: ['book', 'laptop'],
+          objects: ['book', 'laptop'] as string[],
           sessionTime: 0,
         });
         setAlerts(['⚠️ Book detected', '⚠️ Suspicious object detected', '⚠️ Low attention score']);

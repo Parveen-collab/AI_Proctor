@@ -18,6 +18,16 @@ import {
 } from 'recharts';
 import { TrendingUp, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
+interface ExamSessionRecord {
+  id: string;
+  studentName: string;
+  examName: string;
+  duration: number;
+  cheatingDetected: boolean;
+  suspiciousActivities: number;
+  timestamp: string;
+}
+
 interface SessionAnalytics {
   studentName: string;
   examName: string;
@@ -29,15 +39,27 @@ interface SessionAnalytics {
   timestamp: string;
 }
 
+interface TimeSeriesDataPoint {
+  time: number;
+  alerts: number;
+  accuracy: string;
+}
+
+interface AlertDistributionItem {
+  name: string;
+  value: number;
+  color?: string;
+}
+
 export default function AnalyticsDashboard() {
   const [sessions, setSessions] = useState<SessionAnalytics[]>([]);
-  const [timeSeriesData, setTimeSeriesData] = useState<any[]>([]);
-  const [alertDistribution, setAlertDistribution] = useState<any[]>([]);
+  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesDataPoint[]>([]);
+  const [alertDistribution, setAlertDistribution] = useState<AlertDistributionItem[]>([]);
 
   useEffect(() => {
-    const existingSessions = JSON.parse(localStorage.getItem('exam_sessions') || '[]');
+    const existingSessions: ExamSessionRecord[] = JSON.parse(localStorage.getItem('exam_sessions') || '[]');
     
-    const analyticalSessions: SessionAnalytics[] = existingSessions.map((s: any) => ({
+    const analyticalSessions: SessionAnalytics[] = existingSessions.map((s) => ({
       studentName: s.studentName,
       examName: s.examName,
       duration: s.duration,
