@@ -5,9 +5,7 @@
   "framework": "nextjs",
   "regions": ["iad1"],
   "env": {
-    "NEXT_PUBLIC_APP_NAME": {
-      "description": "Application name for deployment"
-    }
+    "NEXT_PUBLIC_APP_NAME": "AI Proctor"
   },
   "functions": {
     "api/**/*.ts": {
